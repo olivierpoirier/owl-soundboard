@@ -1,14 +1,15 @@
 {
-    "name": "🎧 Owl Soundboard 🎧",
-    "version": "1.0.1",
+    "name": "Owl Soundboard",
+    "version": "1.0.2",
     "manifest_version": 1,
     "icon": "/iconExtension.png",
+    "author": "Olivier Poirier",
     "action": {
-      "title": "🎧 Owl Soundboard 🎧",
+      "title": "Owl Soundboard",
       "icon": "/icon.png",
       "popover": "/",
-      "height": 870,
-      "width": 870
+      "height": 600,
+      "width": 400
     }
 }
   
