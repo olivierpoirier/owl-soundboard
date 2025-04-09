@@ -1,13 +1,14 @@
 {
-    "name": "Owl Soundboard!",
-    "version": "1.0.0",
+    "name": "🎧 Owl Soundboard 🎧",
+    "version": "1.0.1",
     "manifest_version": 1,
+    "icon": "/iconExtension.png",
     "action": {
-      "title": "Owl Soundboard!",
+      "title": "🎧 Owl Soundboard 🎧",
       "icon": "/icon.png",
       "popover": "/",
-      "height": 600,
-      "width": 400
+      "height": 870,
+      "width": 870
     }
 }
   
