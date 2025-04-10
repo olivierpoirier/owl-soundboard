@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Scroll personnalisé */
+::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background-color: #7e22ce; /* Violet */
+    border-radius: 10px;
+    border: 2px solid #1a1a1a; /* espace autour du thumb */
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #a855f7; /* Violet clair au hover */
+  }
+  
