@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import OBR from "@owlbear-rodeo/sdk";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,7 @@ import imageSons from "../src/assets/Liste_sons.png";
 import imageZoneLien from "../src/assets/Zone_Lien.png";
 
 export default function App() {
+  const audioRef = useRef(null);
   const [audioUrl, setAudioUrl] = useState("");
   const [audioList, setAudioList] = useState([]);
   const [notification, setNotification] = useState(null);
@@ -62,10 +63,18 @@ export default function App() {
   }, []);
 
   const playAudio = (url) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  
     const audio = new Audio(url);
     audio.volume = isMuted ? 0 : volume;
-    audio.play().catch((e) => console.warn("🔇 Échec de lecture audio :", e));
+    audioRef.current = audio;
+  
+    audio.play().catch((e) => console.warn("🔇 Échec lecture audio :", e));
   };
+  
 
   const playTrack = () => {
     OBR.player.getName().then((playerName) => {
@@ -81,13 +90,22 @@ export default function App() {
   const handleVolumeChange = (newVolume) => {
     setVolume(newVolume);
     localStorage.setItem("owlbear_volume", newVolume.toString());
+  
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : newVolume;
+    }
   };
-
+  
   const toggleMute = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     localStorage.setItem("owlbear_isMuted", newMuted.toString());
+  
+    if (audioRef.current) {
+      audioRef.current.volume = newMuted ? 0 : volume;
+    }
   };
+  
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white">
