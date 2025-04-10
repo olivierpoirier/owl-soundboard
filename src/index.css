@@ -2,27 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-
 html {
-    scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
-/* Scroll personnalisé */
+body {
+  background: transparent;
+  color: white;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Scroll futuriste */
 ::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: #1a1a1a;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background-color: #7e22ce; /* Violet */
-    border-radius: 10px;
-    border: 2px solid #1a1a1a; /* espace autour du thumb */
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: #a855f7; /* Violet clair au hover */
-  }
-  
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #7e22ce;
+  border-radius: 10px;
+  border: 2px solid #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #a855f7;
+}
+
+/* Animation sons actifs */
+.ring-animate {
+  animation: glow 1.5s infinite ease-in-out;
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px #7e22ce; }
+  50% { box-shadow: 0 0 15px #a855f7; }
+  100% { box-shadow: 0 0 5px #7e22ce; }
+}

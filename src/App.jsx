@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import AudioControls from "./components/AudioControls";
 import AudioSelector from "./components/AudioSelector";
 import HelpSection from "./components/HelpSection";
+import FavoritesMenu from "./components/FavoritesMenu";
 
 export default function App() {
   const audiosRef = useRef([]);
@@ -22,6 +23,7 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [activeSoundsCount, setActiveSoundsCount] = useState(0);
   const [isReady, setIsReady] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
@@ -180,7 +182,16 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white">
       <Notification notification={notification} />
-      <Header />
+      <Header toggleMenu={() => setMenuOpen(!menuOpen)} />
+
+      <FavoritesMenu
+        isOpen={menuOpen}
+        favorites={favorites}
+        audioList={audioList}
+        playTrack={playTrack}
+        playAudio={playAudio}
+        toggleFavorite={toggleFavorite} 
+      />
 
       {loading ? (
         <div className="flex flex-col items-center animate-pulse space-y-2">

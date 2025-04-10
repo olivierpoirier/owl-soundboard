@@ -1,73 +1,62 @@
-export default function AudioSelector({ audioUrl, setAudioUrl, audioList, playTrack, playAudio, favorites, toggleFavorite }) {
-    return (
-      <>
-        {audioList.length > 0 && favorites.length > 0 && (
-          <>
-            <h3 className="text-white/70 text-sm">⭐ Mes Favoris</h3>
-            <select
-                className="w-full bg-zinc-900 text-white py-2 px-3 rounded shadow hover:bg-zinc-800 transition"
-                onChange={(e) => setAudioUrl(e.target.value)}
-                >
-                <option disabled selected>-- Choisis un favori --</option>
-                {favorites.map((favUrl) => {
-                    const favName = audioList.find(f => f.url === favUrl)?.name || favUrl;
-                    return (
-                    <option key={favUrl} value={favUrl}>
-                        {favName}
-                    </option>
-                    );
-                })}
-            </select>
-          </>
-        )}
-  
-        <div className="flex items-center justify-between">
-          <select
-            className="w-full bg-zinc-900 text-white py-2 px-3 rounded shadow hover:bg-zinc-800 transition"
-            value={audioUrl}
-            onChange={(e) => setAudioUrl(e.target.value)}
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, Volume2, Star, StarOff, Headphones } from "lucide-react";
+
+export default function AudioSelector({ audioList, playTrack, playAudio, favorites, toggleFavorite }) {
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(0);
+  const maxPage = Math.ceil(audioList.length / itemsPerPage) - 1;
+
+  const pageItems = audioList.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
+
+  return (
+    <div className="flex flex-col items-center gap-3 w-full max-w-[380px]">
+
+      <div className="grid grid-cols-2 gap-3">
+        {pageItems.map((file) => (
+          <div
+            key={file.name}
+            className="relative bg-black/30 backdrop-blur-sm border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center text-center text-xs cursor-pointer hover:ring-2 hover:ring-purple-500 transition group"
+            onClick={() => playTrack(file.url)}
           >
-            {audioList.map((file) => (
-              <option key={file.name} value={file.url}>
-                {file.name}
-              </option>
-            ))}
-          </select>
-  
+            <div className="absolute top-1 right-1 text-yellow-400 z-10">
+              <button onClick={(e) => { e.stopPropagation(); toggleFavorite(file.url); }}>
+                {favorites.includes(file.url) ? <Star size={14} /> : <StarOff size={14} />}
+              </button>
+            </div>
+
+            <div className="absolute bottom-1 right-1 text-purple-400 z-10">
+              <button onClick={(e) => { e.stopPropagation(); playAudio(file.url); }}>
+                <Headphones size={14} />
+              </button>
+            </div>
+
+            <Volume2 size={32} className="text-purple-500 mb-2 group-hover:scale-110 transition" />
+            <div className="truncate max-w-[90%]">{file.name}</div>
+          </div>
+        ))}
+      </div>
+
+      {audioList.length > itemsPerPage && (
+        <div className="flex gap-4 items-center justify-center">
           <button
-            onClick={() => toggleFavorite(audioUrl)}
-            className="ml-2 text-yellow-400 hover:text-yellow-300"
-            title="Ajouter ou retirer des favoris"
+            onClick={() => setPage(Math.max(0, page - 1))}
+            disabled={page === 0}
+            className="text-purple-400 hover:text-purple-200 disabled:opacity-30"
           >
-            {favorites.includes(audioUrl) ? "⭐" : "☆"}
+            <ChevronLeft />
+          </button>
+
+          <span className="text-xs text-white/50">{page + 1} / {maxPage + 1}</span>
+
+          <button
+            onClick={() => setPage(Math.min(maxPage, page + 1))}
+            disabled={page === maxPage}
+            className="text-purple-400 hover:text-purple-200 disabled:opacity-30"
+          >
+            <ChevronRight />
           </button>
         </div>
-  
-        <input
-          className="w-full border border-white/30 rounded px-3 py-2 bg-zinc-800 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400"
-          type="text"
-          value={audioUrl}
-          onChange={(e) =>
-            setAudioUrl(e.target.value.replace(/([?&])dl=0(&|$)/, "$1raw=1$2"))
-          }
-          placeholder="Colle un lien .mp3 ou .wav Dropbox"
-        />
-  
-        <button
-          className="w-full bg-zinc-900 text-white font-semibold py-3 rounded-lg hover:bg-zinc-800 transition shadow"
-          onClick={playTrack}
-        >
-          ▶️ Jouer le son
-        </button>
-
-
-        <button
-            className="w-full bg-zinc-700 text-white font-semibold py-3 rounded-lg hover:bg-zinc-600 transition shadow"
-            onClick={() => playAudio(audioUrl)}
-            >
-            🎧 Écouter en solo (juste pour toi)
-        </button>
-      </>
-    );
-  }
-  
+      )}
+    </div>
+  );
+}
