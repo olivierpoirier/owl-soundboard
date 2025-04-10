@@ -1,15 +1,15 @@
 import { motion } from "framer-motion";
 import { Star, StarOff, Volume2, Headphones } from "lucide-react";
 
-export default function FavoritesMenu({ isOpen, favorites, audioList, playTrack, playAudio, toggleFavorite }) {
+export default function FavoritesMenu({ isOpen, favorites, audioList, playTrack, playAudio, toggleFavorite, toggleMenu }) {
   return (
     <motion.div
       initial={{ x: -250 }}
       animate={{ x: isOpen ? 0 : -250 }}
-      transition={{ type: "tween", duration: 0.4 }}
+      transition={{ type: "tween", duration: 0.6 }}
       className="fixed top-0 left-0 h-full w-[250px] bg-black/40 backdrop-blur-sm border-r border-white/10 p-4 z-40 flex flex-col gap-4 overflow-y-auto"
     >
-      <h2 className="text-yellow-400 text-sm font-bold">⭐ Mes Favoris</h2>
+      <h2 className="text-yellow-400 text-sm font-bold" onClick={toggleMenu}>⭐ Mes Favoris</h2>
 
       {favorites.length === 0 && (
         <span className="text-xs text-white/50">Aucun favori pour l'instant.</span>

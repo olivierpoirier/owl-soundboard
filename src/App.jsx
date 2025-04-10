@@ -6,6 +6,7 @@ import AudioControls from "./components/AudioControls";
 import AudioSelector from "./components/AudioSelector";
 import HelpSection from "./components/HelpSection";
 import FavoritesMenu from "./components/FavoritesMenu";
+import StarToggle from "./components/StarToggle";
 
 export default function App() {
   const audiosRef = useRef([]);
@@ -180,54 +181,60 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white">
+    <div className="min-h-screen relative text-white">
+  
+      {/* GLOBAL FIXED ELEMENTS */}
       <Notification notification={notification} />
-      <Header toggleMenu={() => setMenuOpen(!menuOpen)} />
-
+      <StarToggle menuOpen={menuOpen} toggleMenu={() => setMenuOpen(!menuOpen)} />
       <FavoritesMenu
         isOpen={menuOpen}
         favorites={favorites}
         audioList={audioList}
         playTrack={playTrack}
         playAudio={playAudio}
-        toggleFavorite={toggleFavorite} 
+        toggleFavorite={toggleFavorite}
       />
-
-      {loading ? (
-        <div className="flex flex-col items-center animate-pulse space-y-2">
-          <div className="w-56 h-4 bg-white/30 rounded"></div>
-          <p className="text-sm text-white/70">Chargement des sons...</p>
-        </div>
-      ) : (
-        <div className="w-full max-w-md space-y-6">
-          {dbError && (
-            <p className="text-sm text-red-300 italic">
-              ⚠️ Erreur chargement des sons. Tu peux coller un lien manuellement.
-            </p>
-          )}
-
-          <AudioSelector
-            audioUrl={audioUrl}
-            setAudioUrl={setAudioUrl}
-            audioList={audioList}
-            playTrack={playTrack}
-            playAudio={playAudio}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-          />
-
-          <AudioControls
-            isMuted={isMuted}
-            toggleMute={toggleMute}
-            volume={volume}
-            handleVolumeChange={handleVolumeChange}
-            stopAllSounds={stopAllSounds}
-            audiosCount={activeSoundsCount}
-          />
-
-          <HelpSection helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
-        </div>
-      )}
+  
+      {/* MAIN CONTENT */}
+      <div className="flex flex-col items-center justify-center text-center p-6 space-y-6">
+        <Header toggleMenu={() => setMenuOpen(!menuOpen)} />
+  
+        {loading ? (
+          <div className="flex flex-col items-center animate-pulse space-y-2">
+            <div className="w-56 h-4 bg-white/30 rounded"></div>
+            <p className="text-sm text-white/70">Chargement des sons...</p>
+          </div>
+        ) : (
+          <div className="w-full max-w-md space-y-6">
+            {dbError && (
+              <p className="text-sm text-red-300 italic">
+                ⚠️ Erreur chargement des sons. Tu peux coller un lien manuellement.
+              </p>
+            )}
+  
+            <AudioSelector
+              audioUrl={audioUrl}
+              setAudioUrl={setAudioUrl}
+              audioList={audioList}
+              playTrack={playTrack}
+              playAudio={playAudio}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+            />
+  
+            <AudioControls
+              isMuted={isMuted}
+              toggleMute={toggleMute}
+              volume={volume}
+              handleVolumeChange={handleVolumeChange}
+              stopAllSounds={stopAllSounds}
+              audiosCount={activeSoundsCount}
+            />
+  
+            <HelpSection helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
