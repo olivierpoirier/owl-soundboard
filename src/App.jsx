@@ -62,6 +62,8 @@ export default function App() {
   }, []);
 
   const playAudio = (url) => {
+    console.log("MutedOrNot", isMuted)
+    console.log("volume", volume)
     const audio = new Audio(url);
     audio.volume = isMuted ? 0 : volume;
     audio.play().catch((e) => console.warn("🔇 Échec lecture audio:", e));
