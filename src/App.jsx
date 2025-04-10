@@ -128,22 +128,15 @@ export default function App() {
     }
   };
 
-  const playTrack = () => {
-    if (!isReady) {
-      console.warn("OBR pas prêt encore...");
-      return;
-    }
-
-    try {
-      OBR.player.getName().then((playerName) => {
-        const message = { url: audioUrl, senderName: playerName || "Inconnu" };
-        OBR.broadcast.sendMessage("mini-tracks-play", message);
-      });
-      playAudio(audioUrl);
-    } catch (error) {
-      console.error("Erreur playTrack :", error);
-    }
+  const playTrack = (url) => {
+    if (!isReady) return;
+    OBR.player.getName().then((playerName) => {
+      const message = { url, senderName: playerName || "Inconnu" };
+      OBR.broadcast.sendMessage("mini-tracks-play", message);
+    });
+    playAudio(url);
   };
+  
 
   const handleVolumeChange = (newVolume) => {
     try {
@@ -197,7 +190,7 @@ export default function App() {
   
       {/* MAIN CONTENT */}
       <div className="flex flex-col items-center justify-center text-center p-6 space-y-6">
-        <Header toggleMenu={() => setMenuOpen(!menuOpen)} />
+        <Header />
   
         {loading ? (
           <div className="flex flex-col items-center animate-pulse space-y-2">
