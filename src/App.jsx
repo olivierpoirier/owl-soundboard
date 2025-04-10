@@ -20,16 +20,15 @@ export default function App() {
   useEffect(() => {
     OBR.onReady(() => {
       OBR.broadcast.onMessage("mini-tracks-play", (event) => {
-        const { url } = event.data;
-        const from = event.connectionId;
-
-        setNotification(`🔊 Son déclenché par ${from?.slice(0, 6) ?? "❓ inconnu"}`);
+        const { url, senderName } = event.data;
+    
+        setNotification(`🔊 Son déclenché par ${senderName}`);
         setTimeout(() => setNotification(null), 2500);
-
+    
         const audio = new Audio(url);
         audio.play().catch((e) => console.warn("🔇 Échec de lecture audio :", e));
       });
-    });
+    });    
   }, []);
 
   useEffect(() => {
@@ -53,11 +52,16 @@ export default function App() {
   }, []);
 
   function playTrack() {
-    const message = { url: audioUrl };
-    OBR.broadcast.sendMessage("mini-tracks-play", message);
-
-    const audio = new Audio(audioUrl);
-    audio.play().catch(e => console.warn("🔇 Audio bloqué localement :", e));
+    OBR.player.getName().then((playerName) => {
+      const message = {
+        url: audioUrl,
+        senderName: playerName || "Inconnu",
+      };
+      OBR.broadcast.sendMessage("mini-tracks-play", message);
+  
+      const audio = new Audio(audioUrl);
+      audio.play().catch((e) => console.warn("🔇 Audio bloqué localement :", e));
+    });
   }
 
   return (
@@ -65,7 +69,7 @@ export default function App() {
       <AnimatePresence>
         {notification && (
           <motion.div
-            className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 text-white px-4 py-2 rounded shadow"
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-80 text-white px-4 py-2 rounded shadow text-center max-w-[80%] break-words"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
