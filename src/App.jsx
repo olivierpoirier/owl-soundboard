@@ -20,6 +20,7 @@ export default function App() {
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [activeSoundsCount, setActiveSoundsCount] = useState(0);
 
   const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
@@ -86,9 +87,11 @@ export default function App() {
       audio.play().catch((e) => console.warn("🔇 Échec lecture audio:", e));
 
       audiosRef.current.push(audio);
+      setActiveSoundsCount(audiosRef.current.length);
 
       audio.addEventListener("ended", () => {
         audiosRef.current = audiosRef.current.filter((a) => a !== audio);
+        setActiveSoundsCount(audiosRef.current.length);
       });
     } catch (error) {
       console.error("Erreur playAudio :", error);
@@ -141,6 +144,7 @@ export default function App() {
     try {
       audiosRef.current.forEach((audio) => audio.pause());
       audiosRef.current = [];
+      setActiveSoundsCount(0);
     } catch (error) {
       console.error("Erreur stopAllSounds :", error);
     }
@@ -177,7 +181,7 @@ export default function App() {
             volume={volume}
             handleVolumeChange={handleVolumeChange}
             stopAllSounds={stopAllSounds}
-            audiosCount={audiosRef.current.length}
+            audiosCount={activeSoundsCount}
           />
 
           <HelpSection helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
