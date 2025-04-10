@@ -10,6 +10,7 @@ import imagePartager from "../src/assets/Partager.png";
 import imagePartager2 from "../src/assets/Partager2.png";
 import imageSons from "../src/assets/Liste_sons.png";
 import imageZoneLien from "../src/assets/Zone_Lien.png";
+import { Volume2, VolumeX } from "lucide-react";
 export default function App() {
   const [audioUrl, setAudioUrl] = useState("");
   const [audioList, setAudioList] = useState([]);
