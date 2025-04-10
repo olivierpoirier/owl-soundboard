@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import OBR from "@owlbear-rodeo/sdk";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +29,18 @@ export default function App() {
     if (savedMute !== null) setIsMuted(savedMute === "true");
   }, []);
 
+  const playAudio = useCallback((url) => {
+    const audio = new Audio(url);
+    audio.volume = isMuted ? 0 : volume;
+    audio.play().catch((e) => console.warn("🔇 Échec lecture audio :", e));
+
+    audiosRef.current.push(audio);
+
+    audio.addEventListener("ended", () => {
+      audiosRef.current = audiosRef.current.filter((a) => a !== audio);
+    });
+  }, [isMuted, volume]);
+
   useEffect(() => {
     OBR.onReady(() => {
       OBR.broadcast.onMessage("mini-tracks-play", (event) => {
@@ -38,7 +50,7 @@ export default function App() {
         playAudio(url);
       });
     });
-  }, [volume, isMuted]);
+  }, [playAudio]);
 
   useEffect(() => {
     fetch(apiUrl)
@@ -58,25 +70,25 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  const playAudio = (url) => {
-    const audio = new Audio(url);
-    audio.volume = isMuted ? 0 : volume;
-    audio.play().catch((e) => console.warn("🔇 Échec lecture audio :", e));
-
-    audiosRef.current.push(audio);
-
-    audio.addEventListener("ended", () => {
-      audiosRef.current = audiosRef.current.filter((a) => a !== audio);
-    });
-  };
-
-  const playTrack = () => {
+  function playTrack() {
     OBR.player.getName().then((playerName) => {
-      const message = { url: audioUrl, senderName: playerName || "Inconnu" };
+      const message = {
+        url: audioUrl,
+        senderName: playerName || "Inconnu",
+      };
       OBR.broadcast.sendMessage("mini-tracks-play", message);
-      playAudio(audioUrl);
+
+      const audio = new Audio(audioUrl);
+      audio.volume = isMuted ? 0 : volume;
+      audio.play().catch((e) => console.warn("🔇 Audio bloqué localement :", e));
+
+      audiosRef.current.push(audio);
+
+      audio.addEventListener("ended", () => {
+        audiosRef.current = audiosRef.current.filter((a) => a !== audio);
+      });
     });
-  };
+  }
 
   const handleVolumeChange = (newVolume) => {
     setVolume(newVolume);
