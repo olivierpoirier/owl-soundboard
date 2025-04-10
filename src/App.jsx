@@ -10,7 +10,7 @@ import imageSons from "../src/assets/Liste_sons.png";
 import imageZoneLien from "../src/assets/Zone_Lien.png";
 
 export default function App() {
-  const audioRef = useRef(null);
+  const audiosRef = useRef([]);
   const [audioUrl, setAudioUrl] = useState("");
   const [audioList, setAudioList] = useState([]);
   const [notification, setNotification] = useState(null);
@@ -22,11 +22,9 @@ export default function App() {
 
   const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
-  // Charger les valeurs persistantes au démarrage
   useEffect(() => {
     const savedVolume = localStorage.getItem("owlbear_volume");
     const savedMute = localStorage.getItem("owlbear_isMuted");
-
     if (savedVolume !== null) setVolume(parseFloat(savedVolume));
     if (savedMute !== null) setIsMuted(savedMute === "true");
   }, []);
@@ -51,9 +49,7 @@ export default function App() {
           url: file.url.replace(/([?&])dl=0(&|$)/, "$1raw=1$2"),
         }));
         setAudioList(fixed);
-        if (fixed.length > 0) {
-          setAudioUrl(fixed[0].url);
-        }
+        if (fixed.length > 0) setAudioUrl(fixed[0].url);
       })
       .catch((err) => {
         console.error("❌ Erreur chargement des sons :", err);
@@ -63,25 +59,20 @@ export default function App() {
   }, []);
 
   const playAudio = (url) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-  
     const audio = new Audio(url);
     audio.volume = isMuted ? 0 : volume;
-    audioRef.current = audio;
-  
     audio.play().catch((e) => console.warn("🔇 Échec lecture audio :", e));
+
+    audiosRef.current.push(audio);
+
+    audio.addEventListener("ended", () => {
+      audiosRef.current = audiosRef.current.filter((a) => a !== audio);
+    });
   };
-  
 
   const playTrack = () => {
     OBR.player.getName().then((playerName) => {
-      const message = {
-        url: audioUrl,
-        senderName: playerName || "Inconnu",
-      };
+      const message = { url: audioUrl, senderName: playerName || "Inconnu" };
       OBR.broadcast.sendMessage("mini-tracks-play", message);
       playAudio(audioUrl);
     });
@@ -90,22 +81,24 @@ export default function App() {
   const handleVolumeChange = (newVolume) => {
     setVolume(newVolume);
     localStorage.setItem("owlbear_volume", newVolume.toString());
-  
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : newVolume;
-    }
+    audiosRef.current.forEach((audio) => {
+      audio.volume = isMuted ? 0 : newVolume;
+    });
   };
-  
+
   const toggleMute = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     localStorage.setItem("owlbear_isMuted", newMuted.toString());
-  
-    if (audioRef.current) {
-      audioRef.current.volume = newMuted ? 0 : volume;
-    }
+    audiosRef.current.forEach((audio) => {
+      audio.volume = newMuted ? 0 : volume;
+    });
   };
-  
+
+  const stopAllSounds = () => {
+    audiosRef.current.forEach((audio) => audio.pause());
+    audiosRef.current = [];
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white">
@@ -191,33 +184,46 @@ export default function App() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex items-center justify-between gap-4 mt-4"
+            className="flex flex-col gap-4 mt-4"
           >
+            <div className="flex items-center justify-between gap-4">
+              <button
+                onClick={toggleMute}
+                className={`flex items-center gap-2 px-3 py-2 rounded transition ${
+                  isMuted
+                    ? "bg-red-700 hover:bg-red-600"
+                    : "bg-zinc-900 hover:bg-zinc-800"
+                }`}
+              >
+                {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                {isMuted ? "Muet" : "Son activé"}
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/60">Volume</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(e) =>
+                    handleVolumeChange(parseFloat(e.target.value))
+                  }
+                  className="w-32 accent-purple-500"
+                />
+              </div>
+            </div>
+
             <button
-              onClick={toggleMute}
-              className={`flex items-center gap-2 px-3 py-2 rounded transition ${
-                isMuted
-                  ? "bg-red-700 hover:bg-red-600"
-                  : "bg-zinc-900 hover:bg-zinc-800"
-              }`}
+              onClick={stopAllSounds}
+              className="w-full bg-red-700 text-white font-semibold py-2 rounded-lg hover:bg-red-600 transition shadow"
             >
-              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-              {isMuted ? "Muet" : "Son activé"}
+              ⏹️ Stop Tous les Sons
             </button>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-white/60">Volume</span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(e) =>
-                  handleVolumeChange(parseFloat(e.target.value))
-                }
-                className="w-32 accent-purple-500"
-              />
+            <div className="text-xs text-white/60 text-center">
+              Sons actifs : {audiosRef.current.length}
             </div>
           </motion.div>
 
