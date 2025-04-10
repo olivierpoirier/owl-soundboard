@@ -13,14 +13,15 @@ export default function App() {
 
   const [audioUrl, setAudioUrl] = useState("");
   const [audioList, setAudioList] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [isReady, setIsReady] = useState(false);
   const [activeSoundsCount, setActiveSoundsCount] = useState(0);
+  const [isReady, setIsReady] = useState(false);
 
   const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
@@ -28,8 +29,11 @@ export default function App() {
     try {
       const savedVolume = localStorage.getItem("owlbear_volume");
       const savedMute = localStorage.getItem("owlbear_isMuted");
+      const savedFavs = localStorage.getItem("owlbear_favorites");
+
       if (savedVolume !== null) setVolume(parseFloat(savedVolume));
       if (savedMute !== null) setIsMuted(savedMute === "true");
+      if (savedFavs !== null) setFavorites(JSON.parse(savedFavs));
     } catch (error) {
       console.error("Erreur récupération localStorage :", error);
     }
@@ -68,6 +72,14 @@ export default function App() {
           name: file.name,
           url: file.url.replace(/([?&])dl=0(&|$)/, "$1raw=1$2")
         }));
+
+        // Supprimer les favoris qui n'existent plus
+        setFavorites((prevFavs) =>
+          prevFavs.filter(favUrl =>
+            fixed.some(file => file.url === favUrl)
+          )
+        );
+
         setAudioList(fixed);
         if (fixed.length > 0) setAudioUrl(fixed[0].url);
       } catch (error) {
@@ -79,6 +91,21 @@ export default function App() {
     };
     fetchAudioList();
   }, []);
+
+  const toggleFavorite = (url) => {
+    try {
+      let newFavorites;
+      if (favorites.includes(url)) {
+        newFavorites = favorites.filter(fav => fav !== url);
+      } else {
+        newFavorites = [...favorites, url];
+      }
+      setFavorites(newFavorites);
+      localStorage.setItem("owlbear_favorites", JSON.stringify(newFavorites));
+    } catch (error) {
+      console.error("Erreur toggleFavorite :", error);
+    }
+  };
 
   const playAudio = (url) => {
     try {
@@ -100,7 +127,7 @@ export default function App() {
 
   const playTrack = () => {
     if (!isReady) {
-      console.warn("OBR pas encore prêt ...");
+      console.warn("OBR pas prêt encore...");
       return;
     }
 
@@ -151,7 +178,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white bg-black">
       <Notification notification={notification} />
       <Header />
 
@@ -173,6 +200,9 @@ export default function App() {
             setAudioUrl={setAudioUrl}
             audioList={audioList}
             playTrack={playTrack}
+            playAudio={playAudio}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
           />
 
           <AudioControls
