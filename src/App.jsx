@@ -11,7 +11,10 @@ import imageZoneLien from "../src/assets/Zone_Lien.png";
 
 
 export default function App() {
-  const audiosRef = useRef([]); // Tous les sons actifs (locaux + reçus)
+  const audiosRef = useRef([]);
+  const volumeRef = useRef(1);
+  const mutedRef = useRef(false);
+
   const [audioUrl, setAudioUrl] = useState("");
   const [audioList, setAudioList] = useState([]);
   const [notification, setNotification] = useState(null);
@@ -29,6 +32,14 @@ export default function App() {
     if (savedVolume !== null) setVolume(parseFloat(savedVolume));
     if (savedMute !== null) setIsMuted(savedMute === "true");
   }, []);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    mutedRef.current = isMuted;
+  }, [isMuted]);
 
   useEffect(() => {
     OBR.onReady(() => {
@@ -62,10 +73,8 @@ export default function App() {
   }, []);
 
   const playAudio = (url) => {
-    console.log("MutedOrNot", isMuted)
-    console.log("volume", volume)
     const audio = new Audio(url);
-    audio.volume = isMuted ? 0 : volume;
+    audio.volume = mutedRef.current ? 0 : volumeRef.current;
     audio.play().catch((e) => console.warn("🔇 Échec lecture audio:", e));
 
     audiosRef.current.push(audio);
@@ -92,7 +101,7 @@ export default function App() {
     localStorage.setItem("owlbear_volume", newVolume.toString());
 
     audiosRef.current.forEach((audio) => {
-      audio.volume = isMuted ? 0 : newVolume;
+      audio.volume = mutedRef.current ? 0 : newVolume;
     });
   };
 
@@ -102,7 +111,7 @@ export default function App() {
     localStorage.setItem("owlbear_isMuted", newMuted.toString());
 
     audiosRef.current.forEach((audio) => {
-      audio.volume = newMuted ? 0 : volume;
+      audio.volume = newMuted ? 0 : volumeRef.current;
     });
   };
 
@@ -149,7 +158,7 @@ export default function App() {
         >
           {dbError && (
             <p className="text-sm text-red-300 italic">
-              ⚠️ Erreur de chargement des sons. Tu peux coller un lien manuellement.
+              ⚠️ Erreur chargement des sons. Tu peux coller un lien manuellement.
             </p>
           )}
 
