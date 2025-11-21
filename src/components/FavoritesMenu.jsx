@@ -7,12 +7,6 @@ import React from "react";
  * favorites: array of { id, name, type } where:
  *   - id = file.url OR folder.path_lower
  *   - type = "file" | "folder"
- *
- * This component shows global favorites and allows:
- *  - click file => playTrack(fav.id)
- *  - click folder => openFolder(fav.id)
- *  - headphones => playAudio(fav.id) (local)
- *  - star => toggleFavorite(fav.id) (remove)
  */
 export default function FavoritesMenu({ isOpen, favorites = [], playTrack, playAudio, toggleFavorite, openFolder, toggleMenu }) {
   return (
@@ -78,7 +72,7 @@ export default function FavoritesMenu({ isOpen, favorites = [], playTrack, playA
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleFavorite(fav.id); // retire le favori
+                    toggleFavorite(fav.id); // remove favorite
                   }}
                   className="text-yellow-400"
                   title="Retirer des favoris"

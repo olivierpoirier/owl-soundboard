@@ -169,12 +169,21 @@ export default function App() {
     }
   };
 
-  const playAudio = (url) => {
-    try {
-      const audio = new Audio(url);
-      audio.volume = mutedRef.current ? 0 : volumeRef.current;
-      audio.play().catch((e) => console.warn("🔇 Échec lecture audio:", e));
+  // robust playAudio with fallback fetch->blob
+  const playAudio = async (url) => {
+    if (!url) {
+      console.warn("playAudio: url manquante");
+      return;
+    }
 
+    try {
+      // try direct playback first
+      const audio = new Audio();
+      audio.crossOrigin = "anonymous";
+      audio.src = url;
+      audio.volume = mutedRef.current ? 0 : volumeRef.current;
+
+      await audio.play();
       audiosRef.current.push(audio);
       setActiveSoundsCount(audiosRef.current.length);
 
@@ -182,8 +191,50 @@ export default function App() {
         audiosRef.current = audiosRef.current.filter((a) => a !== audio);
         setActiveSoundsCount(audiosRef.current.length);
       });
-    } catch (error) {
-      console.error("Erreur playAudio :", error);
+      return;
+    } catch (err) {
+      console.warn("Échec lecture directe, tentative de fallback (fetch -> blob):", err);
+    }
+
+    // fallback
+    try {
+      const resp = await fetch(url, { mode: "cors" });
+      console.log("Fallback fetch status:", resp.status, "content-type:", resp.headers.get("content-type"));
+
+      if (!resp.ok) {
+        console.error("Fetch failed:", resp.status, await resp.text().catch(() => "<no body>"));
+        return;
+      }
+
+      const ct = resp.headers.get("content-type") || "";
+      if (ct.includes("text/html")) {
+        console.error("La réponse est du HTML — l'URL ne renvoie pas le fichier audio brut.");
+        return;
+      }
+
+      const arrayBuffer = await resp.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: ct || "audio/mpeg" });
+      const objectUrl = URL.createObjectURL(blob);
+
+      const audio2 = new Audio();
+      audio2.crossOrigin = "anonymous";
+      audio2.src = objectUrl;
+      audio2.volume = mutedRef.current ? 0 : volumeRef.current;
+
+      audio2.play().catch((e) => {
+        console.error("Échec lecture du blob audio :", e);
+      });
+
+      audiosRef.current.push(audio2);
+      setActiveSoundsCount(audiosRef.current.length);
+
+      audio2.addEventListener("ended", () => {
+        audiosRef.current = audiosRef.current.filter((a) => a !== audio2);
+        setActiveSoundsCount(audiosRef.current.length);
+        URL.revokeObjectURL(objectUrl);
+      });
+    } catch (e) {
+      console.error("Fallback fetch->blob failed:", e);
     }
   };
 
@@ -249,7 +300,6 @@ export default function App() {
       <FavoritesMenu
         isOpen={menuOpen}
         favorites={favorites}
-        audioList={audioList}
         playTrack={playTrack}
         playAudio={playAudio}
         toggleFavorite={toggleFavorite}

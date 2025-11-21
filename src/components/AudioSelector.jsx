@@ -29,7 +29,6 @@ export default function AudioSelector({
   useEffect(() => {
     if (page > maxPage) setPage(maxPage);
     if (page < 0) setPage(0);
-    // note: we intentionally don't add setPage in deps to avoid loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxPage]);
 
