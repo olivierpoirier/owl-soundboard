@@ -13,9 +13,8 @@ export default function App() {
   const volumeRef = useRef(1);
   const mutedRef = useRef(false);
 
-  const [audioUrl, setAudioUrl] = useState("");
-  const [audioList, setAudioList] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [audioList, setAudioList] = useState([]); // entries for current folder (mixed files+folders)
+  const [favorites, setFavorites] = useState([]); // store strings that can be either file-url or folder-path_lower
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -26,8 +25,11 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
+  // Navigation state: pathParts is array like ["owlbear", "subfolder"]
+  const [pathParts, setPathParts] = useState(["/owlbear"]); // keep root as '/owlbear'
+  const apiBase = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
+  // load settings from localStorage once
   useEffect(() => {
     try {
       const savedVolume = localStorage.getItem("owlbear_volume");
@@ -50,6 +52,7 @@ export default function App() {
     mutedRef.current = isMuted;
   }, [isMuted]);
 
+  // OBR ready and broadcast
   useEffect(() => {
     try {
       OBR.onReady(() => {
@@ -66,42 +69,44 @@ export default function App() {
     }
   }, []);
 
+  // fetch folder content whenever pathParts changes
   useEffect(() => {
-    const fetchAudioList = async () => {
+    const fetchFolder = async () => {
+      setLoading(true);
+      setDbError(false);
       try {
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        const fixed = data.map(file => ({
-          name: file.name,
-          url: file.url.replace(/([?&])dl=0(&|$)/, "$1raw=1$2")
-        }));
-
-        // Supprimer les favoris qui n'existent plus
-        setFavorites((prevFavs) =>
-          prevFavs.filter(favUrl =>
-            fixed.some(file => file.url === favUrl)
-          )
-        );
-
-        setAudioList(fixed);
-        if (fixed.length > 0) setAudioUrl(fixed[0].url);
-      } catch (error) {
-        console.error("❌ Erreur chargement des sons :", error);
+        const currentPath = pathParts[pathParts.length - 1] || "/owlbear";
+        const encoded = encodeURIComponent(currentPath);
+        const res = await fetch(`${apiBase}?path=${encoded}`);
+        const json = await res.json();
+        if (json.error) {
+          console.error("Dropbox list error:", json);
+          setDbError(true);
+          setAudioList([]);
+          return;
+        }
+        // json.entries already sorted by backend
+        setAudioList(json.entries || []);
+      } catch (e) {
+        console.error("❌ Erreur chargement des sons :", e);
         setDbError(true);
+        setAudioList([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchAudioList();
-  }, []);
 
-  const toggleFavorite = (url) => {
+    fetchFolder();
+  }, [pathParts]);
+
+  const toggleFavorite = (id) => {
+    // id can be file.url or folder.path_lower
     try {
       let newFavorites;
-      if (favorites.includes(url)) {
-        newFavorites = favorites.filter(fav => fav !== url);
+      if (favorites.includes(id)) {
+        newFavorites = favorites.filter((f) => f !== id);
       } else {
-        newFavorites = [...favorites, url];
+        newFavorites = [...favorites, id];
       }
       setFavorites(newFavorites);
       localStorage.setItem("owlbear_favorites", JSON.stringify(newFavorites));
@@ -136,7 +141,6 @@ export default function App() {
     });
     playAudio(url);
   };
-  
 
   const handleVolumeChange = (newVolume) => {
     try {
@@ -173,10 +177,19 @@ export default function App() {
     }
   };
 
+  // navigation helpers
+  const openFolder = (folderPath) => {
+    setPathParts((prev) => [...prev, folderPath]);
+  };
+  const goToBreadcrumb = (index) => {
+    setPathParts((prev) => prev.slice(0, index + 1));
+  };
+  const goUpOne = () => {
+    setPathParts((prev) => (prev.length > 1 ? prev.slice(0, prev.length - 1) : prev));
+  };
+
   return (
     <div className="min-h-screen relative text-white">
-  
-      {/* GLOBAL FIXED ELEMENTS */}
       <Notification notification={notification} />
       <StarToggle menuOpen={menuOpen} toggleMenu={() => setMenuOpen(!menuOpen)} />
       <FavoritesMenu
@@ -187,11 +200,10 @@ export default function App() {
         playAudio={playAudio}
         toggleFavorite={toggleFavorite}
       />
-  
-      {/* MAIN CONTENT */}
+
       <div className="flex flex-col items-center justify-center text-center p-6 space-y-6">
         <Header />
-  
+
         {loading ? (
           <div className="flex flex-col items-center animate-pulse space-y-2">
             <div className="w-56 h-4 bg-white/30 rounded"></div>
@@ -204,17 +216,19 @@ export default function App() {
                 ⚠️ Erreur chargement des sons. Tu peux coller un lien manuellement.
               </p>
             )}
-  
+
             <AudioSelector
-              audioUrl={audioUrl}
-              setAudioUrl={setAudioUrl}
               audioList={audioList}
               playTrack={playTrack}
               playAudio={playAudio}
               favorites={favorites}
               toggleFavorite={toggleFavorite}
+              openFolder={openFolder}
+              pathParts={pathParts}
+              goToBreadcrumb={goToBreadcrumb}
+              goUpOne={goUpOne}
             />
-  
+
             <AudioControls
               isMuted={isMuted}
               toggleMute={toggleMute}
@@ -223,7 +237,7 @@ export default function App() {
               stopAllSounds={stopAllSounds}
               audiosCount={activeSoundsCount}
             />
-  
+
             <HelpSection helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
           </div>
         )}
