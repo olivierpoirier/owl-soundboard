@@ -1,3 +1,4 @@
+// AudioSelector.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Volume2, Star, StarOff, Headphones, Folder, FolderOpen } from "lucide-react";
 
@@ -5,7 +6,7 @@ export default function AudioSelector({
   audioList = [],
   playTrack,
   playAudio,
-  favorites,
+  favorites = [],
   toggleFavorite,
   openFolder,
   pathParts = [],
@@ -34,14 +35,14 @@ export default function AudioSelector({
 
   const pageItems = combined.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
 
-  // Page window (5 before and after)
+  // Page window (3 before and after)
   const windowSize = 3;
   const pageStart = Math.max(0, page - windowSize);
   const pageEnd = Math.min(maxPage, page + windowSize);
   const pageRange = [];
   for (let p = pageStart; p <= pageEnd; p++) pageRange.push(p);
 
-  const isFavorite = (id) => favorites.includes(id);
+  const isFavorite = (id) => favorites.some((f) => f.id === id);
 
   return (
     <div className="flex flex-col items-center gap-3 w-full max-w-[380px]">
@@ -81,7 +82,7 @@ export default function AudioSelector({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleFavorite(entry.path_lower);
+                      toggleFavorite(entry.path_lower, { name: entry.name, type: "folder" });
                     }}
                   >
                     {isFavorite(entry.path_lower) ? <Star size={14} /> : <StarOff size={14} />}
@@ -109,13 +110,13 @@ export default function AudioSelector({
               <div
                 key={entry.url || entry.path_lower}
                 className="relative bg-black/30 backdrop-blur-sm border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center text-center text-xs cursor-pointer hover:ring-2 hover:ring-purple-500 transition group"
-                onClick={() => playTrack(entry.url)}
+                onClick={() => entry.url && playTrack(entry.url)}
               >
                 <div className="absolute top-1 right-1 text-yellow-400 z-10">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleFavorite(entry.url);
+                      toggleFavorite(entry.url, { name: entry.name, type: "file" });
                     }}
                   >
                     {isFavorite(entry.url) ? <Star size={14} /> : <StarOff size={14} />}
@@ -126,7 +127,7 @@ export default function AudioSelector({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      playAudio(entry.url);
+                      entry.url && playAudio(entry.url);
                     }}
                   >
                     <Headphones size={14} />
@@ -143,11 +144,6 @@ export default function AudioSelector({
 
       {combined.length > itemsPerPage && (
         <div className="flex flex-col gap-2 items-center w-full">
-          {/* Pagination wrapper:
-              - left arrow fixed width
-              - center (page numbers) flex-1 and centered
-              - right arrow fixed width
-            This keeps arrows in the same place even if page numbers change width */}
           <div className="flex items-center w-full">
             <div className="w-10 flex justify-center">
               <button
