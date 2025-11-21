@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Volume2, Star, StarOff, Headphones, Folder, FolderOpen } from "lucide-react";
 
 export default function AudioSelector({
@@ -24,8 +24,13 @@ export default function AudioSelector({
 
   const maxPage = Math.max(0, Math.ceil(combined.length / itemsPerPage) - 1);
 
-  // ensure current page in bounds after list change
-  if (page > maxPage) setPage(maxPage);
+  // clamp page when list changes to avoid out-of-range pages
+  useEffect(() => {
+    if (page > maxPage) setPage(maxPage);
+    if (page < 0) setPage(0);
+    // note: we intentionally don't add setPage in deps to avoid loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxPage]);
 
   const pageItems = combined.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
 
@@ -87,7 +92,6 @@ export default function AudioSelector({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      // No preview for folder; open it
                       openFolder(entry.path_lower);
                     }}
                   >
@@ -138,33 +142,46 @@ export default function AudioSelector({
       </div>
 
       {combined.length > itemsPerPage && (
-        <div className="flex flex-col gap-2 items-center">
-          <div className="flex gap-4 items-center justify-center">
-            <button
-              onClick={() => setPage((p) => (p === 0 ? maxPage : Math.max(0, p - 1)))}
-              className="text-purple-400 hover:text-purple-200"
-            >
-              <ChevronLeft />
-            </button>
-
-            <div className="flex gap-1 items-center">
-              {pageRange.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`text-xs px-2 py-1 rounded ${p === page ? "bg-purple-600 text-white" : "text-white/60 hover:text-white"}`}
-                >
-                  {p + 1}
-                </button>
-              ))}
+        <div className="flex flex-col gap-2 items-center w-full">
+          {/* Pagination wrapper:
+              - left arrow fixed width
+              - center (page numbers) flex-1 and centered
+              - right arrow fixed width
+            This keeps arrows in the same place even if page numbers change width */}
+          <div className="flex items-center w-full">
+            <div className="w-10 flex justify-center">
+              <button
+                onClick={() => setPage((p) => (p === 0 ? maxPage : Math.max(0, p - 1)))}
+                className="text-purple-400 hover:text-purple-200"
+                aria-label="Page précédente"
+              >
+                <ChevronLeft />
+              </button>
             </div>
 
-            <button
-              onClick={() => setPage((p) => (p === maxPage ? 0 : Math.min(maxPage, p + 1)))}
-              className="text-purple-400 hover:text-purple-200"
-            >
-              <ChevronRight />
-            </button>
+            <div className="mx-2 flex-1 flex justify-center">
+              <div className="flex gap-1 items-center flex-wrap justify-center">
+                {pageRange.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`text-xs px-2 py-1 rounded ${p === page ? "bg-purple-600 text-white" : "text-white/60 hover:text-white"}`}
+                  >
+                    {p + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="w-10 flex justify-center">
+              <button
+                onClick={() => setPage((p) => (p === maxPage ? 0 : Math.min(maxPage, p + 1)))}
+                className="text-purple-400 hover:text-purple-200"
+                aria-label="Page suivante"
+              >
+                <ChevronRight />
+              </button>
+            </div>
           </div>
 
           <div className="text-xs text-white/50">
