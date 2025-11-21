@@ -35,7 +35,7 @@ export default function AudioSelector({
   const pageItems = combined.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
 
   // Page window (5 before and after)
-  const windowSize = 5;
+  const windowSize = 3;
   const pageStart = Math.max(0, page - windowSize);
   const pageEnd = Math.min(maxPage, page + windowSize);
   const pageRange = [];
