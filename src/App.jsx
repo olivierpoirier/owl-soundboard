@@ -1,4 +1,3 @@
-// App.jsx
 import React, { useEffect, useRef, useState } from "react";
 import OBR from "@owlbear-rodeo/sdk";
 import Notification from "./components/Notification";
@@ -28,7 +27,6 @@ export default function App() {
 
   const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
-  // Load saved settings from localStorage
   useEffect(() => {
     try {
       const savedVolume = localStorage.getItem("owlbear_volume");
@@ -43,10 +41,14 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { volumeRef.current = volume; }, [volume]);
-  useEffect(() => { mutedRef.current = isMuted; }, [isMuted]);
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
 
-  // OBR ready + broadcast listener
+  useEffect(() => {
+    mutedRef.current = isMuted;
+  }, [isMuted]);
+
   useEffect(() => {
     try {
       OBR.onReady(() => {
@@ -63,7 +65,6 @@ export default function App() {
     }
   }, []);
 
-  // Fetch audio list from Dropbox API
   useEffect(() => {
     const fetchAudioList = async () => {
       try {
@@ -75,7 +76,7 @@ export default function App() {
         }));
 
         // Supprimer les favoris qui n'existent plus
-        setFavorites(prevFavs =>
+        setFavorites((prevFavs) =>
           prevFavs.filter(favUrl =>
             fixed.some(file => file.url === favUrl)
           )
@@ -93,7 +94,6 @@ export default function App() {
     fetchAudioList();
   }, []);
 
-  // Toggle a favorite
   const toggleFavorite = (url) => {
     try {
       let newFavorites;
@@ -109,7 +109,6 @@ export default function App() {
     }
   };
 
-  // Play an audio locally
   const playAudio = (url) => {
     try {
       const audio = new Audio(url);
@@ -120,7 +119,7 @@ export default function App() {
       setActiveSoundsCount(audiosRef.current.length);
 
       audio.addEventListener("ended", () => {
-        audiosRef.current = audiosRef.current.filter(a => a !== audio);
+        audiosRef.current = audiosRef.current.filter((a) => a !== audio);
         setActiveSoundsCount(audiosRef.current.length);
       });
     } catch (error) {
@@ -128,7 +127,6 @@ export default function App() {
     }
   };
 
-  // Play track via OBR and locally
   const playTrack = () => {
     if (!isReady) {
       console.warn("OBR pas prêt encore...");
@@ -146,12 +144,11 @@ export default function App() {
     }
   };
 
-  // Volume & mute controls
   const handleVolumeChange = (newVolume) => {
     try {
       setVolume(newVolume);
       localStorage.setItem("owlbear_volume", newVolume.toString());
-      audiosRef.current.forEach(audio => {
+      audiosRef.current.forEach((audio) => {
         audio.volume = mutedRef.current ? 0 : newVolume;
       });
     } catch (error) {
@@ -164,7 +161,7 @@ export default function App() {
       const newMuted = !isMuted;
       setIsMuted(newMuted);
       localStorage.setItem("owlbear_isMuted", newMuted.toString());
-      audiosRef.current.forEach(audio => {
+      audiosRef.current.forEach((audio) => {
         audio.volume = newMuted ? 0 : volumeRef.current;
       });
     } catch (error) {
@@ -172,10 +169,9 @@ export default function App() {
     }
   };
 
-  // Stop all sounds
   const stopAllSounds = () => {
     try {
-      audiosRef.current.forEach(audio => audio.pause());
+      audiosRef.current.forEach((audio) => audio.pause());
       audiosRef.current = [];
       setActiveSoundsCount(0);
     } catch (error) {
