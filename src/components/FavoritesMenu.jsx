@@ -13,10 +13,10 @@ export default function FavoritesMenu({
   toggleMenu,
   changeFolder
 }) {
-  // Récupère les objets fichier correspondant aux URLs favorites
-  const favoriteFiles = favorites
-    .map((favUrl) => audioList.find((f) => f.url === favUrl))
-    .filter(Boolean);
+  // SÉCURITÉ : On utilise ?. et || [] pour garantir que ça ne plante pas si les props sont undefined
+  const favoriteFiles = favorites?.map((favUrl) => 
+      audioList?.find((f) => f.url === favUrl)
+    ).filter(Boolean) || [];
 
   return (
     <motion.div
@@ -30,11 +30,14 @@ export default function FavoritesMenu({
       {/* --- Dossiers Favoris --- */}
       <h3 className="text-white/80 text-xs font-semibold mt-2">Dossiers Favoris</h3>
       <div className="flex flex-col gap-2">
-        {folderFavorites.length === 0 && (
+        {/* SÉCURITÉ : ?.length */}
+        {folderFavorites?.length === 0 && (
           <span className="text-xs text-white/50">Aucun dossier favori.</span>
         )}
-        {folderFavorites.map((favPath) => {
-          const pathParts = favPath.split("/").filter(p => p.length > 0);
+        
+        {/* SÉCURITÉ : ?.map */}
+        {folderFavorites?.map((favPath) => {
+          const pathParts = favPath?.split("/").filter(p => p.length > 0) || [];
           const folderName = pathParts.length > 0 ? pathParts.pop() : "Racine";
 
           return (
@@ -43,7 +46,6 @@ export default function FavoritesMenu({
               onClick={() => changeFolder(favPath)}
               className="relative bg-black/30 backdrop-blur-sm border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center text-center text-xs cursor-pointer hover:ring-2 hover:ring-yellow-500 transition group"
             >
-              {/* Bouton pour retirer le dossier des favoris */}
               <div className="absolute top-1 right-1 text-yellow-400 z-10">
                 <button onClick={(e) => { e.stopPropagation(); toggleFolderFavorite(favPath); }}>
                   <Star size={14} /> 
@@ -59,29 +61,28 @@ export default function FavoritesMenu({
 
       {/* --- Sons Favoris --- */}
       <h3 className="text-white/80 text-xs font-semibold mt-4">Sons Favoris</h3>
-      {favoriteFiles.length === 0 && folderFavorites.length > 0 && (
+      
+      {favoriteFiles?.length === 0 && folderFavorites?.length > 0 && (
         <span className="text-xs text-white/50">Aucun son favori pour l'instant.</span>
       )}
-      {favoriteFiles.length === 0 && folderFavorites.length === 0 && (
+      {favoriteFiles?.length === 0 && folderFavorites?.length === 0 && (
         <span className="text-xs text-white/50">Aucun favori pour l'instant.</span>
       )}
 
       <div className="flex flex-col gap-2">
-        {favoriteFiles.map((file) => {
+        {favoriteFiles?.map((file) => {
           return (
             <div
               key={file.name}
               onClick={() => playTrack(file.url)}
               className="relative bg-black/30 backdrop-blur-sm border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center text-center text-xs cursor-pointer hover:ring-2 hover:ring-purple-500 transition group"
             >
-              {/* Bouton pour retirer le son des favoris */}
               <div className="absolute top-1 right-1 text-yellow-400 z-10">
                 <button onClick={(e) => { e.stopPropagation(); toggleFavorite(file.url); }}>
                   <Star size={14} />
                 </button>
               </div>
 
-              {/* Bouton lecture */}
               <div className="absolute bottom-1 right-1 text-purple-400 z-10">
                 <button onClick={(e) => { e.stopPropagation(); playAudio(file.url); }}>
                   <Headphones size={14} />

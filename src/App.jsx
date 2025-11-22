@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import OBR from "@owlbear-rodeo/sdk";
 import Notification from "./components/Notification";
 import Header from "./components/Header";
@@ -13,9 +13,14 @@ export default function App() {
   const volumeRef = useRef(1);
   const mutedRef = useRef(false);
 
+  // --- ETATS RESTAURÉS (Manquants dans ton dernier snippet) ---
+  const [currentPath, setCurrentPath] = useState("/owlbear");
+  const [folderFavorites, setFolderFavorites] = useState([]);
+  // -----------------------------------------------------------
+
   const [audioUrl, setAudioUrl] = useState("");
-  const [audioList, setAudioList] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [audioList, setAudioList] = useState([]); // Initialisé à tableau vide []
+  const [favorites, setFavorites] = useState([]); // Initialisé à tableau vide []
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -33,10 +38,12 @@ export default function App() {
       const savedVolume = localStorage.getItem("owlbear_volume");
       const savedMute = localStorage.getItem("owlbear_isMuted");
       const savedFavs = localStorage.getItem("owlbear_favorites");
+      const savedFolderFavs = localStorage.getItem("owlbear_folder_favorites");
 
       if (savedVolume !== null) setVolume(parseFloat(savedVolume));
       if (savedMute !== null) setIsMuted(savedMute === "true");
-      if (savedFavs !== null) setFavorites(JSON.parse(savedFavs));
+      if (savedFavs !== null) setFavorites(JSON.parse(savedFavs) || []); // Fallback []
+      if (savedFolderFavs !== null) setFolderFavorites(JSON.parse(savedFolderFavs) || []); // Fallback []
     } catch (error) {
       console.error("Erreur récupération localStorage :", error);
     }
@@ -66,42 +73,75 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    const fetchAudioList = async () => {
-      try {
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        const fixed = data.map(file => ({
-          name: file.name,
-          url: file.url.replace(/([?&])dl=0(&|$)/, "$1raw=1$2")
-        }));
+  // --- FONCTION FETCH MISE A JOUR AVEC LOGIQUE DE DOSSIER ---
+  const fetchAudioList = useCallback(async (path) => {
+    setLoading(true);
+    setDbError(false);
 
-        // Supprimer les favoris qui n'existent plus
-        setFavorites((prevFavs) =>
-          prevFavs.filter(favUrl =>
-            fixed.some(file => file.url === favUrl)
-          )
-        );
+    const url = path && path !== "/owlbear" ? `${apiUrl}?path=${encodeURIComponent(path)}` : apiUrl;
+    setCurrentPath(path || "/owlbear");
 
-        setAudioList(fixed);
-        if (fixed.length > 0) setAudioUrl(fixed[0].url);
-      } catch (error) {
-        console.error("❌ Erreur chargement des sons :", error);
-        setDbError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAudioList();
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      // Séparation dossiers/fichiers
+      const folders = data?.filter(item => item.isFolder) || [];
+      const files = data?.filter(item => !item.isFolder) || [];
+
+      const fixedFiles = files.map(file => ({
+        name: file.name,
+        url: file.url.replace(/([?&])dl=0(&|$)/, "$1raw=1$2"),
+        isFolder: false,
+        path: file.path,
+      }));
+
+      const combinedList = [...folders, ...fixedFiles];
+
+      setFavorites((prevFavs) =>
+        (prevFavs || []).filter(favUrl =>
+          fixedFiles.some(file => file.url === favUrl)
+        )
+      );
+
+      setAudioList(combinedList);
+      if (fixedFiles.length > 0) setAudioUrl(fixedFiles[0].url);
+    } catch (error) {
+      console.error("❌ Erreur chargement des sons :", error);
+      setDbError(true);
+      setAudioList([]); // Évite que ce soit undefined en cas d'erreur
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAudioList("/owlbear");
+  }, [fetchAudioList]);
+
+  // --- FONCTIONS DE NAVIGATION (Restaurées) ---
+  const changeFolder = (path) => {
+    fetchAudioList(path);
+  };
+  
+  const goBack = () => {
+    if (currentPath === "/owlbear") return;
+    const pathParts = currentPath.split("/").filter(p => p.length > 0);
+    pathParts.pop();
+    const newPath = "/" + pathParts.join("/");
+    fetchAudioList(newPath === "/" ? "/owlbear" : newPath);
+  };
+  // --------------------------------------------
 
   const toggleFavorite = (url) => {
     try {
       let newFavorites;
-      if (favorites.includes(url)) {
-        newFavorites = favorites.filter(fav => fav !== url);
+      // Sécurité sur favorites
+      const currentFavorites = favorites || [];
+      if (currentFavorites.includes(url)) {
+        newFavorites = currentFavorites.filter(fav => fav !== url);
       } else {
-        newFavorites = [...favorites, url];
+        newFavorites = [...currentFavorites, url];
       }
       setFavorites(newFavorites);
       localStorage.setItem("owlbear_favorites", JSON.stringify(newFavorites));
@@ -109,6 +149,24 @@ export default function App() {
       console.error("Erreur toggleFavorite :", error);
     }
   };
+
+  // --- FONCTION FAVORIS DOSSIER (Restaurée) ---
+  const toggleFolderFavorite = (path) => {
+    try {
+      let newFavorites;
+      const currentFavorites = folderFavorites || [];
+      if (currentFavorites.includes(path)) {
+        newFavorites = currentFavorites.filter(favPath => favPath !== path);
+      } else {
+        newFavorites = [...currentFavorites, path];
+      }
+      setFolderFavorites(newFavorites);
+      localStorage.setItem("owlbear_folder_favorites", JSON.stringify(newFavorites));
+    } catch (error) {
+      console.error("Erreur toggleFolderFavorite :", error);
+    }
+  };
+  // -------------------------------------------
 
   const playAudio = (url) => {
     try {
@@ -137,7 +195,6 @@ export default function App() {
     playAudio(url);
   };
   
-
   const handleVolumeChange = (newVolume) => {
     try {
       setVolume(newVolume);
@@ -182,10 +239,14 @@ export default function App() {
       <FavoritesMenu
         isOpen={menuOpen}
         favorites={favorites}
+        folderFavorites={folderFavorites} // Passé correctement
         audioList={audioList}
         playTrack={playTrack}
         playAudio={playAudio}
         toggleFavorite={toggleFavorite}
+        toggleFolderFavorite={toggleFolderFavorite} // Passé correctement
+        toggleMenu={() => setMenuOpen(!menuOpen)}
+        changeFolder={changeFolder} // Passé correctement
       />
   
       {/* MAIN CONTENT */}
@@ -213,6 +274,13 @@ export default function App() {
               playAudio={playAudio}
               favorites={favorites}
               toggleFavorite={toggleFavorite}
+              
+              // Props ajoutées pour la navigation
+              currentPath={currentPath}
+              changeFolder={changeFolder}
+              goBack={goBack}
+              folderFavorites={folderFavorites}
+              toggleFolderFavorite={toggleFolderFavorite}
             />
   
             <AudioControls

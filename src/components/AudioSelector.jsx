@@ -24,7 +24,9 @@ export default function AudioSelector({
 }) {
   const itemsPerPage = 6;
   const [page, setPage] = useState(0);
-  const totalItems = audioList.length;
+  
+  // SÉCURITÉ : On met || 0 si audioList est undefined
+  const totalItems = audioList?.length || 0; 
   const maxPage = Math.ceil(totalItems / itemsPerPage) - 1;
 
   const goToPage = (newPage) => {
@@ -45,7 +47,8 @@ export default function AudioSelector({
     setPage(0);
   }
 
-  const pageItems = audioList.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
+  // SÉCURITÉ : ?.slice et fallback sur tableau vide
+  const pageItems = audioList?.slice(page * itemsPerPage, (page + 1) * itemsPerPage) || [];
 
   const pageNumbers = [];
   const startPage = Math.max(0, page - 3);
@@ -76,13 +79,13 @@ export default function AudioSelector({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
+        {/* SÉCURITÉ : pageItems est garanti d'être un tableau grâce au || [] plus haut */}
         {pageItems.map((file) => (
           <div
-            key={file.path} 
+            key={file.path || file.url} // Fallback de clé si path est manquant
             onClick={() => file.isFolder ? changeFolder(file.path) : playTrack(file.url)}
             className="relative bg-black/30 backdrop-blur-sm border border-white/10 rounded-lg p-3 flex flex-col items-center justify-center text-center text-xs cursor-pointer hover:ring-2 hover:ring-purple-500 transition group"
           >
-            {/* Bouton Favoris (Dossier ou Son) */}
             <div className="absolute top-1 right-1 text-yellow-400 z-10">
               <button 
                 onClick={(e) => { 
@@ -90,13 +93,13 @@ export default function AudioSelector({
                   file.isFolder ? toggleFolderFavorite(file.path) : toggleFavorite(file.url); 
                 }}
               >
+                {/* SÉCURITÉ : ?.includes */}
                 {file.isFolder 
-                  ? (folderFavorites.includes(file.path) ? <Star size={14} /> : <StarOff size={14} />) 
-                  : (favorites.includes(file.url) ? <Star size={14} /> : <StarOff size={14} />)}
+                  ? (folderFavorites?.includes(file.path) ? <Star size={14} /> : <StarOff size={14} />) 
+                  : (favorites?.includes(file.url) ? <Star size={14} /> : <StarOff size={14} />)}
               </button>
             </div>
 
-            {/* Bouton Lecture (Seulement pour les sons) */}
             {!file.isFolder && (
               <div className="absolute bottom-1 right-1 text-purple-400 z-10">
                 <button onClick={(e) => { e.stopPropagation(); playAudio(file.url); }}>
@@ -105,7 +108,6 @@ export default function AudioSelector({
               </div>
             )}
 
-            {/* Icône principale (Dossier ou Son) */}
             {file.isFolder 
               ? <FolderOpen size={32} className="text-yellow-400 mb-2 group-hover:scale-110 transition" />
               : <Volume2 size={32} className="text-purple-500 mb-2 group-hover:scale-110 transition" />
@@ -116,7 +118,6 @@ export default function AudioSelector({
         ))}
       </div>
 
-      {/* Contrôles de pagination avancés */}
       {showPagination && (
         <div className="flex gap-1 items-center justify-center">
           <button
