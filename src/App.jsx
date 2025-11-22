@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useEffect, useRef, useState } from "react";
 import OBR from "@owlbear-rodeo/sdk";
 import Notification from "./components/Notification";
@@ -6,15 +7,15 @@ import AudioControls from "./components/AudioControls";
 import AudioSelector from "./components/AudioSelector";
 import HelpSection from "./components/HelpSection";
 import FavoritesMenu from "./components/FavoritesMenu";
+import StarToggle from "./components/StarToggle";
 
 export default function App() {
   const audiosRef = useRef([]);
   const volumeRef = useRef(1);
   const mutedRef = useRef(false);
 
-  const [audioUrl, setAudioUrl] = useState("");
-  const [audioList, setAudioList] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [audioList, setAudioList] = useState([]); // entries for current folder (mixed files+folders)
+  const [favorites, setFavorites] = useState([]); // array of { id, name, type }
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -25,17 +26,65 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const apiUrl = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
+  // Navigation state: pathParts is array like ["/owlbear", "/owlbear/sub"]
+  const [pathParts, setPathParts] = useState(["/owlbear"]); // keep root as '/owlbear'
+  const apiBase = "https://owl-reaction-backend-server.vercel.app/api/dropbox-files";
 
+  // helper to derive friendly name from id (path_lower or url)
+  function deriveNameFromId(id) {
+    try {
+      if (!id) return "Favori";
+      if (id.startsWith("/")) {
+        const parts = id.split("/");
+        return parts[parts.length - 1] || id;
+      } else {
+        const urlParts = id.split("?")[0].split("/");
+        return urlParts[urlParts.length - 1] || id;
+      }
+    } catch {
+      return id;
+    }
+  }
+
+  // load settings from localStorage once (with migration for favorites)
   useEffect(() => {
     try {
       const savedVolume = localStorage.getItem("owlbear_volume");
       const savedMute = localStorage.getItem("owlbear_isMuted");
-      const savedFavs = localStorage.getItem("owlbear_favorites");
+      const rawFavs = localStorage.getItem("owlbear_favorites");
 
       if (savedVolume !== null) setVolume(parseFloat(savedVolume));
       if (savedMute !== null) setIsMuted(savedMute === "true");
-      if (savedFavs !== null) setFavorites(JSON.parse(savedFavs));
+
+      if (rawFavs) {
+        let parsed;
+        try {
+          parsed = JSON.parse(rawFavs);
+        } catch {
+          parsed = null;
+        }
+
+        if (Array.isArray(parsed)) {
+          // migrate strings -> objects
+          const migrated = parsed.map((item) => {
+            if (typeof item === "string") {
+              const name = deriveNameFromId(item);
+              const type = item.startsWith("/") ? "folder" : "file";
+              return { id: item, name, type };
+            }
+            if (item && typeof item === "object") {
+              return {
+                id: item.id,
+                name: item.name || deriveNameFromId(item.id),
+                type: item.type || (item.id && item.id.startsWith("/") ? "folder" : "file"),
+              };
+            }
+            return null;
+          }).filter(Boolean);
+          setFavorites(migrated);
+          localStorage.setItem("owlbear_favorites", JSON.stringify(migrated));
+        }
+      }
     } catch (error) {
       console.error("Erreur récupération localStorage :", error);
     }
@@ -49,6 +98,7 @@ export default function App() {
     mutedRef.current = isMuted;
   }, [isMuted]);
 
+  // OBR ready and broadcast
   useEffect(() => {
     try {
       OBR.onReady(() => {
@@ -65,45 +115,55 @@ export default function App() {
     }
   }, []);
 
+  // fetch folder content whenever pathParts changes
   useEffect(() => {
-    const fetchAudioList = async () => {
+    const fetchFolder = async () => {
+      setLoading(true);
+      setDbError(false);
       try {
-        const res = await fetch(apiUrl);
-        const data = await res.json();
-        const fixed = data.map(file => ({
-          name: file.name,
-          url: file.url.replace(/([?&])dl=0(&|$)/, "$1raw=1$2")
-        }));
-
-        // Supprimer les favoris qui n'existent plus
-        setFavorites((prevFavs) =>
-          prevFavs.filter(favUrl =>
-            fixed.some(file => file.url === favUrl)
-          )
-        );
-
-        setAudioList(fixed);
-        if (fixed.length > 0) setAudioUrl(fixed[0].url);
-      } catch (error) {
-        console.error("❌ Erreur chargement des sons :", error);
+        const currentPath = pathParts[pathParts.length - 1] || "/owlbear";
+        const encoded = encodeURIComponent(currentPath);
+        const res = await fetch(`${apiBase}?path=${encoded}`);
+        const json = await res.json();
+        if (json.error) {
+          console.error("Dropbox list error:", json);
+          setDbError(true);
+          setAudioList([]);
+          return;
+        }
+        // json.entries already sorted by backend
+        setAudioList(json.entries || []);
+      } catch (e) {
+        console.error("❌ Erreur chargement des sons :", e);
         setDbError(true);
+        setAudioList([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchAudioList();
-  }, []);
 
-  const toggleFavorite = (url) => {
+    fetchFolder();
+  }, [pathParts]);
+
+  // toggleFavorite: id = file.url or folder.path_lower, meta optional { name, type }
+  const toggleFavorite = (id, meta = {}) => {
     try {
-      let newFavorites;
-      if (favorites.includes(url)) {
-        newFavorites = favorites.filter(fav => fav !== url);
-      } else {
-        newFavorites = [...favorites, url];
-      }
-      setFavorites(newFavorites);
-      localStorage.setItem("owlbear_favorites", JSON.stringify(newFavorites));
+      setFavorites((prev) => {
+        const exists = prev.find((f) => f.id === id);
+        let newFavs;
+        if (exists) {
+          newFavs = prev.filter((f) => f.id !== id);
+        } else {
+          const item = {
+            id,
+            name: meta.name || deriveNameFromId(id),
+            type: meta.type || (id && id.startsWith("/") ? "folder" : "file"),
+          };
+          newFavs = [...prev, item];
+        }
+        localStorage.setItem("owlbear_favorites", JSON.stringify(newFavs));
+        return newFavs;
+      });
     } catch (error) {
       console.error("Erreur toggleFavorite :", error);
     }
@@ -127,21 +187,13 @@ export default function App() {
     }
   };
 
-  const playTrack = () => {
-    if (!isReady) {
-      console.warn("OBR pas prêt encore...");
-      return;
-    }
-
-    try {
-      OBR.player.getName().then((playerName) => {
-        const message = { url: audioUrl, senderName: playerName || "Inconnu" };
-        OBR.broadcast.sendMessage("mini-tracks-play", message);
-      });
-      playAudio(audioUrl);
-    } catch (error) {
-      console.error("Erreur playTrack :", error);
-    }
+  const playTrack = (url) => {
+    if (!isReady) return;
+    OBR.player.getName().then((playerName) => {
+      const message = { url, senderName: playerName || "Inconnu" };
+      OBR.broadcast.sendMessage("mini-tracks-play", message);
+    });
+    playAudio(url);
   };
 
   const handleVolumeChange = (newVolume) => {
@@ -179,55 +231,73 @@ export default function App() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 space-y-6 text-white">
-      <Notification notification={notification} />
-      <Header toggleMenu={() => setMenuOpen(!menuOpen)} />
+  // navigation helpers
+  const openFolder = (folderPath) => {
+    setPathParts((prev) => [...prev, folderPath]);
+  };
+  const goToBreadcrumb = (index) => {
+    setPathParts((prev) => prev.slice(0, index + 1));
+  };
+  const goUpOne = () => {
+    setPathParts((prev) => (prev.length > 1 ? prev.slice(0, prev.length - 1) : prev));
+  };
 
+  return (
+    <div className="min-h-screen relative text-white">
+      <Notification notification={notification} />
+      <StarToggle menuOpen={menuOpen} toggleMenu={() => setMenuOpen(!menuOpen)} />
       <FavoritesMenu
         isOpen={menuOpen}
         favorites={favorites}
         audioList={audioList}
         playTrack={playTrack}
         playAudio={playAudio}
-        toggleFavorite={toggleFavorite} 
+        toggleFavorite={toggleFavorite}
+        openFolder={openFolder}
+        toggleMenu={() => setMenuOpen(!menuOpen)}
       />
 
-      {loading ? (
-        <div className="flex flex-col items-center animate-pulse space-y-2">
-          <div className="w-56 h-4 bg-white/30 rounded"></div>
-          <p className="text-sm text-white/70">Chargement des sons...</p>
-        </div>
-      ) : (
-        <div className="w-full max-w-md space-y-6">
-          {dbError && (
-            <p className="text-sm text-red-300 italic">
-              ⚠️ Erreur chargement des sons. Tu peux coller un lien manuellement.
-            </p>
-          )}
+      <div className="flex flex-col items-center justify-center text-center p-6 space-y-6">
+        <Header />
 
-          <AudioSelector
-            audioUrl={audioUrl}
-            setAudioUrl={setAudioUrl}
-            audioList={audioList}
-            playTrack={playTrack}
-            playAudio={playAudio}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-          />
+        {loading ? (
+          <div className="flex flex-col items-center animate-pulse space-y-2">
+            <div className="w-56 h-4 bg-white/30 rounded"></div>
+            <p className="text-sm text-white/70">Chargement des sons...</p>
+          </div>
+        ) : (
+          <div className="w-full max-w-md space-y-6">
+            {dbError && (
+              <p className="text-sm text-red-300 italic">
+                ⚠️ Erreur chargement des sons. Tu peux coller un lien manuellement.
+              </p>
+            )}
 
-          <AudioControls
-            isMuted={isMuted}
-            toggleMute={toggleMute}
-            volume={volume}
-            handleVolumeChange={handleVolumeChange}
-            stopAllSounds={stopAllSounds}
-            audiosCount={activeSoundsCount}
-          />
+            <AudioSelector
+              audioList={audioList}
+              playTrack={playTrack}
+              playAudio={playAudio}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              openFolder={openFolder}
+              pathParts={pathParts}
+              goToBreadcrumb={goToBreadcrumb}
+              goUpOne={goUpOne}
+            />
 
-          <HelpSection helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
-        </div>
-      )}
+            <AudioControls
+              isMuted={isMuted}
+              toggleMute={toggleMute}
+              volume={volume}
+              handleVolumeChange={handleVolumeChange}
+              stopAllSounds={stopAllSounds}
+              audiosCount={activeSoundsCount}
+            />
+
+            <HelpSection helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
