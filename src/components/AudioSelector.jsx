@@ -41,6 +41,7 @@ export default function AudioSelector({
     setPage(next);
   };
 
+  // Ajustement automatique si la page actuelle dépasse le max (ex: changement de dossier)
   if (page > maxPage && totalItems > 0) {
     setPage(maxPage);
   } else if (totalItems === 0 && page !== 0) {
@@ -118,11 +119,12 @@ export default function AudioSelector({
         ))}
       </div>
 
+      {/* Contrôles de pagination avec FIX de largeur */}
       {showPagination && (
-        <div className="flex gap-1 items-center justify-center">
+        <div className="flex gap-1 items-center justify-center mt-2">
           <button
             onClick={() => goToPage(page - 1)}
-            className="text-purple-400 hover:text-purple-200"
+            className="text-purple-400 hover:text-purple-200 p-1"
           >
             <ChevronLeft />
           </button>
@@ -132,7 +134,8 @@ export default function AudioSelector({
               key={p}
               onClick={() => setPage(p)}
               className={`
-                text-xs rounded px-2 py-1 transition
+                text-xs rounded transition
+                w-8 h-7 flex items-center justify-center  /* FIX: Largeur fixe pour éviter le décalage */
                 ${p === page 
                   ? 'bg-purple-500 text-white font-bold' 
                   : 'text-white/50 hover:bg-white/10'}
@@ -144,7 +147,7 @@ export default function AudioSelector({
 
           <button
             onClick={() => goToPage(page + 1)}
-            className="text-purple-400 hover:text-purple-200"
+            className="text-purple-400 hover:text-purple-200 p-1"
           >
             <ChevronRight />
           </button>
